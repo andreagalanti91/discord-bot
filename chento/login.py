@@ -70,8 +70,19 @@ def capture_token(timeout_s: int = 600, qr_path: Path | None = None) -> str:
             print("Fai il login nella finestra del browser (puoi usare anche il QR code dall'app).")
         deadline = time.time() + timeout_s
         last_qr = b""
+        last_state = ""
         while "v" not in token and time.time() < deadline:
             if headless:
+                # stato della pagina (es. "Check your phone", captcha, errori) per capire dove si blocca
+                try:
+                    state = page.locator('[class*="authBox"], [class*="qrLogin"], main').first.inner_text(timeout=1000)
+                    state = " ".join(state.split())[:160]
+                except Exception:
+                    state = page.url
+                if state != last_state:
+                    print(f"Stato pagina: {state}", flush=True)
+                    last_state = state
+                    page.screenshot(path=str(qr_path.with_name(qr_path.stem + "-page.png")))
                 qr = page.locator(QR_SELECTOR).first
                 try:
                     if qr.is_visible():

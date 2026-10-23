@@ -1,0 +1,6 @@
+.env
+data/
+dashboard/data.js
+__pycache__/
+*.pyc
+.pytest_cache/

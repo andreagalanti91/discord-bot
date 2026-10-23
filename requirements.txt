@@ -1,0 +1,3 @@
+requests>=2.31
+anthropic>=2.1   # opzionale: analisi AI di testo e screenshot
+pytest>=8        # solo per i test

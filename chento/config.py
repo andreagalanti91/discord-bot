@@ -26,6 +26,8 @@ _load_dotenv()
 @dataclass
 class Config:
     discord_token: str = os.getenv("DISCORD_BOT_TOKEN", "")
+    # token di sessione del proprio account, salvato da `python -m chento login`
+    user_token: str = os.getenv("DISCORD_USER_TOKEN", "")
     channel_id: str = os.getenv("DISCORD_CHANNEL_ID", "1547586761515860069")
     guild_id: str = os.getenv("DISCORD_GUILD_ID", "1042855255089623100")
     # Autore da tracciare: ID numerico (preferito) oppure parte del nome.

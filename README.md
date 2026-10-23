@@ -30,7 +30,21 @@ python -m chento watch          # alert in tempo reale per ogni nuovo messaggio 
 Per provare senza Discord: `python -m chento demo && python -m chento analyze --no-ai`.
 La demo usa messaggi **sintetici** (marcati DEMO nella dashboard) su prezzi storici reali.
 
-### Opzione A — export dal tuo account (nessun bot, credenziali solo sul tuo PC)
+### Opzione A — login con il tuo account (sul tuo PC)
+> ⚠️ Usare il proprio account da uno script è contro i Termini di Discord e può portare al ban.
+> Il tool legge soltanto, a ritmo lento, e il token resta nel file `.env` del tuo computer.
+
+```bash
+pip install -r requirements.txt && python -m playwright install chromium
+python -m chento login     # si apre discord.com/login: accedi (anche 2FA/QR)
+python -m chento sync      # scarica i messaggi del canale 1547586761515860069
+python -m chento analyze && python -m chento serve
+python -m chento watch     # alert in tempo reale
+python -m chento logout    # rimuove il token (poi disconnetti la sessione da Discord → Dispositivi)
+```
+Imposta `CHENTO_AUTHOR_ID` con l'ID di Chento per filtrare solo i suoi messaggi.
+
+### Opzione A2 — export dal tuo account (nessun bot, credenziali solo sul tuo PC)
 1. Scarica [DiscordChatExporter](https://github.com/Tyrrrz/DiscordChatExporter) ed eseguilo **sul tuo computer**.
 2. Esporta il canale `1547586761515860069` in formato **JSON**, con l'opzione per scaricare i media
    (GUI: "Download assets"; CLI: `--media`).

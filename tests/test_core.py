@@ -104,3 +104,12 @@ def test_import_discordchatexporter(tmp_path, monkeypatch):
     assert n == 2 and list(authors.values()) == [2]
     assert msgs[0]["attachments"][0]["content_type"] == "image/png" and msgs[0]["attachments"][0]["local_path"]
     assert msgs[1]["reply_to"] == "10"
+
+
+def test_client_auth_modes():
+    from chento.config import Config
+    from chento.discord_fetch import DiscordClient
+    u = DiscordClient(Config(discord_token="", user_token="abc"))
+    assert u.user_mode and u.s.headers["Authorization"] == "abc" and u.page_delay > 0
+    b = DiscordClient(Config(discord_token="xyz", user_token=""))
+    assert not b.user_mode and b.s.headers["Authorization"] == "Bot xyz"

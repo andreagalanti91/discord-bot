@@ -1,6 +1,8 @@
 """CLI: python -m chento <comando>
 
-  sync      scarica lo storico del canale Discord (richiede DISCORD_BOT_TOKEN)
+  login     login con il tuo account Discord nel browser (sul tuo PC), salva il token in .env
+  logout    rimuove il token salvato
+  sync      scarica lo storico del canale Discord (account o bot)
   import    importa un export JSON di DiscordChatExporter (fatto col tuo account, in locale)
   analyze   estrae i segnali, esegue backtest replica + Chento+, genera la dashboard
   watch     monitora il canale e invia un alert per ogni nuovo messaggio di Chento
@@ -16,6 +18,16 @@ import time
 
 from .config import CONFIG, ROOT
 from .db import Store
+
+
+def cmd_login(a):
+    from .login import login
+    login()
+
+
+def cmd_logout(a):
+    from .login import logout
+    logout()
 
 
 def cmd_sync(a):
@@ -96,6 +108,8 @@ def cmd_serve(a):
 def main():
     p = argparse.ArgumentParser(prog="chento", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("login").set_defaults(fn=cmd_login)
+    sub.add_parser("logout").set_defaults(fn=cmd_logout)
     s = sub.add_parser("sync")
     s.add_argument("--limit", type=int, default=None, help="massimo numero di messaggi")
     s.set_defaults(fn=cmd_sync)

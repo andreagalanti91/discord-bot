@@ -1,11 +1,11 @@
 """Download dello storico del canale Discord via REST API (token di un BOT).
 
-Requisiti lato Discord:
-  * il bot deve essere membro del server e avere i permessi
-    "View Channel" + "Read Message History" sul canale;
-  * nel Developer Portal va attivato il privileged intent "MESSAGE CONTENT",
-    altrimenti `content` arriva vuoto.
-I self-bot (token utente) violano i ToS di Discord e non sono supportati.
+Due modalità di accesso:
+  * BOT (DISCORD_BOT_TOKEN): il bot deve essere nel server con "View Channel" +
+    "Read Message History" e l'intent "MESSAGE CONTENT" attivo.
+  * ACCOUNT (DISCORD_USER_TOKEN, creato da `python -m chento login`): legge ciò che vede il tuo
+    account. Automatizzare un account utente è contro i Termini di Discord e può portare al ban:
+    il client resta in sola lettura e rallenta le richieste per ridurre il rischio.
 """
 from __future__ import annotations
 
@@ -18,21 +18,28 @@ from .config import CONFIG, Config
 from .db import Store
 
 API = "https://discord.com/api/v10"
+USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
 
 
 class DiscordClient:
     def __init__(self, cfg: Config = CONFIG):
-        if not cfg.discord_token:
+        if not (cfg.discord_token or cfg.user_token):
             raise SystemExit(
-                "DISCORD_BOT_TOKEN non impostato. Aggiungilo come variabile d'ambiente "
-                "(o nel file .env) e riprova."
+                "Nessuna credenziale Discord. Esegui `python -m chento login` (account personale) "
+                "oppure imposta DISCORD_BOT_TOKEN, e riprova."
             )
         self.cfg = cfg
+        self.user_mode = not cfg.discord_token
         self.s = requests.Session()
-        self.s.headers.update({
-            "Authorization": f"Bot {cfg.discord_token}",
-            "User-Agent": "ChentoTracker (https://github.com, 1.0)",
-        })
+        if self.user_mode:
+            self.s.headers.update({"Authorization": cfg.user_token, "User-Agent": USER_AGENT})
+        else:
+            self.s.headers.update({
+                "Authorization": f"Bot {cfg.discord_token}",
+                "User-Agent": "ChentoTracker (https://github.com, 1.0)",
+            })
+        self.page_delay = 1.5 if self.user_mode else 0.0
 
     def _get(self, path: str, **params):
         while True:
@@ -40,8 +47,11 @@ class DiscordClient:
             if r.status_code == 429:
                 time.sleep(float(r.json().get("retry_after", 1)) + 0.25)
                 continue
+            if r.status_code == 401:
+                raise SystemExit("401: credenziale non valida o scaduta. Rifai `python -m chento login`.")
             if r.status_code == 403:
-                raise SystemExit("403: il bot non ha accesso al canale (permessi o non è nel server).")
+                who = "il tuo account" if self.user_mode else "il bot"
+                raise SystemExit(f"403: {who} non ha accesso al canale (permessi o non è nel server).")
             r.raise_for_status()
             return r.json()
 
@@ -66,6 +76,10 @@ class DiscordClient:
                 if max_messages and n >= max_messages:
                     return
             before = batch[-1]["id"]
+            time.sleep(self.page_delay)
+
+    def me(self) -> dict:
+        return self._get("/users/@me")
 
     def download(self, url: str, dest: Path) -> Path | None:
         if dest.exists():

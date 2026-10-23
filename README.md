@@ -30,7 +30,18 @@ python -m chento watch          # alert in tempo reale per ogni nuovo messaggio 
 Per provare senza Discord: `python -m chento demo && python -m chento analyze --no-ai`.
 La demo usa messaggi **sintetici** (marcati DEMO nella dashboard) su prezzi storici reali.
 
-### Accesso a Discord
+### Opzione A — export dal tuo account (nessun bot, credenziali solo sul tuo PC)
+1. Scarica [DiscordChatExporter](https://github.com/Tyrrrz/DiscordChatExporter) ed eseguilo **sul tuo computer**.
+2. Esporta il canale `1547586761515860069` in formato **JSON**, con l'opzione per scaricare i media
+   (GUI: "Download assets"; CLI: `--media`).
+3. Metti il `.json` e la cartella dei media in `data/export/` e lancia:
+   ```bash
+   python -m chento import data/export/<file>.json   # mostra gli autori con il loro ID
+   CHENTO_AUTHOR_ID=<id di Chento> python -m chento analyze
+   ```
+Ripeti l'export quando vuoi aggiornare i dati: l'import salta i messaggi già presenti.
+
+### Opzione B — bot Discord (necessaria per gli alert in tempo reale)
 1. Developer Portal → New Application → Bot → copia il token in `DISCORD_BOT_TOKEN`.
 2. Nella stessa pagina attiva **Message Content Intent**.
 3. Invita il bot nel server con i permessi *View Channel* + *Read Message History*

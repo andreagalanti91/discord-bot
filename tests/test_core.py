@@ -79,3 +79,28 @@ def test_stats():
               {"ts": "c", "outcome": "skipped", "r": 0}]
     s = stats(trades)
     assert s["win_rate"] == 50 and s["total_r"] == 1 and s["profit_factor"] == 2 and s["skipped"] == 1
+
+
+def test_import_discordchatexporter(tmp_path, monkeypatch):
+    import json
+
+    from chento import importer
+    from chento.db import Store
+    (tmp_path / "media").mkdir()
+    (tmp_path / "media" / "chart.png").write_bytes(b"png")
+    export = {"channel": {"id": "c1"}, "messages": [
+        {"id": "10", "type": "Default", "timestamp": "2026-01-01T10:00:00+00:00", "content": "LONG BTC entry 100 sl 90 tp 120",
+         "author": {"id": "42", "name": "chento", "nickname": "Chento"},
+         "attachments": [{"url": "media/chart.png", "fileName": "chart.png"}], "embeds": [], "reference": None},
+        {"id": "11", "type": "Reply", "timestamp": "2026-01-01T12:00:00+00:00", "content": "sl a be",
+         "author": {"id": "42", "name": "chento"}, "attachments": [], "embeds": [], "reference": {"messageId": "10"}},
+    ]}
+    f = tmp_path / "export.json"
+    f.write_text(json.dumps(export))
+    monkeypatch.setattr(importer.CONFIG, "data_dir", tmp_path / "data")
+    store = Store(tmp_path / "data" / "db.sqlite")
+    n, authors = importer.import_export(f, store)
+    msgs = store.messages()
+    assert n == 2 and list(authors.values()) == [2]
+    assert msgs[0]["attachments"][0]["content_type"] == "image/png" and msgs[0]["attachments"][0]["local_path"]
+    assert msgs[1]["reply_to"] == "10"

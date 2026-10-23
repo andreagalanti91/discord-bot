@@ -1,6 +1,7 @@
 """CLI: python -m chento <comando>
 
   sync      scarica lo storico del canale Discord (richiede DISCORD_BOT_TOKEN)
+  import    importa un export JSON di DiscordChatExporter (fatto col tuo account, in locale)
   analyze   estrae i segnali, esegue backtest replica + Chento+, genera la dashboard
   watch     monitora il canale e invia un alert per ogni nuovo messaggio di Chento
   demo      crea un dataset DEMO sintetico (prezzi reali) per provare tutto senza Discord
@@ -21,6 +22,17 @@ def cmd_sync(a):
     from .discord_fetch import sync_history
     n = sync_history(Store(CONFIG.db_path), CONFIG, a.limit)
     print(f"Scaricati {n} messaggi dal canale {CONFIG.channel_id}.")
+
+
+def cmd_import(a):
+    from pathlib import Path
+
+    from .importer import import_export
+    n, authors = import_export(Path(a.file), Store(CONFIG.db_path))
+    print(f"Importati {n} messaggi. Autori:")
+    for k, v in list(authors.items())[:10]:
+        print(f"  {v:>5}  {k}")
+    print("Imposta CHENTO_AUTHOR_ID con l'ID di Chento, poi: python -m chento analyze")
 
 
 def cmd_analyze(a):
@@ -87,6 +99,9 @@ def main():
     s = sub.add_parser("sync")
     s.add_argument("--limit", type=int, default=None, help="massimo numero di messaggi")
     s.set_defaults(fn=cmd_sync)
+    s = sub.add_parser("import")
+    s.add_argument("file", help="file .json esportato con DiscordChatExporter")
+    s.set_defaults(fn=cmd_import)
     for name, fn in (("analyze", cmd_analyze), ("watch", cmd_watch)):
         s = sub.add_parser(name)
         s.add_argument("--no-ai", action="store_true", help="solo parser a regole, niente Claude")

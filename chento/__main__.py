@@ -21,8 +21,10 @@ from .db import Store
 
 
 def cmd_login(a):
+    from pathlib import Path
+
     from .login import login
-    login()
+    login(Path(a.qr) if a.qr else None)
 
 
 def cmd_logout(a):
@@ -108,7 +110,9 @@ def cmd_serve(a):
 def main():
     p = argparse.ArgumentParser(prog="chento", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("login").set_defaults(fn=cmd_login)
+    s = sub.add_parser("login")
+    s.add_argument("--qr", metavar="FILE.png", help="senza schermo: salva il QR da scansionare con l'app")
+    s.set_defaults(fn=cmd_login)
     sub.add_parser("logout").set_defaults(fn=cmd_logout)
     s = sub.add_parser("sync")
     s.add_argument("--limit", type=int, default=None, help="massimo numero di messaggi")

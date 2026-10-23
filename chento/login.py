@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import re
 import time
+from pathlib import Path
 
 from .config import CONFIG, ROOT
 
@@ -26,16 +27,28 @@ def _save_env(key: str, value: str) -> None:
     os.chmod(ENV, 0o600)
 
 
-def capture_token(timeout_s: int = 600) -> str:
+USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
+QR_SELECTOR = '[class*="qrCode"]'
+
+
+def _has_display() -> bool:
+    return os.name == "nt" or os.uname().sysname == "Darwin" or bool(
+        os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
+def capture_token(timeout_s: int = 600, qr_path: Path | None = None) -> str:
+    """Senza `qr_path` apre una finestra di login; con `qr_path` gira senza schermo e salva
+    l'immagine del QR code (aggiornata quando Discord la rigenera) da scansionare con l'app."""
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as e:
         raise SystemExit(
             "Serve Playwright: pip install playwright && python -m playwright install chromium"
         ) from e
-    if os.name != "nt" and not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY") \
-            and os.uname().sysname != "Darwin":
-        raise SystemExit("Nessuno schermo disponibile: esegui `python -m chento login` sul tuo PC, non su un server.")
+    headless = qr_path is not None
+    if not headless and not _has_display():
+        raise SystemExit("Nessuno schermo disponibile: usa `python -m chento login --qr qr.png`.")
 
     token: dict[str, str] = {}
 
@@ -45,24 +58,43 @@ def capture_token(timeout_s: int = 600) -> str:
             token["v"] = auth
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        page = browser.new_context().new_page()
+        exe = os.environ.get("CHENTO_CHROMIUM")
+        browser = p.chromium.launch(headless=headless, executable_path=exe or None)
+        page = browser.new_context(user_agent=USER_AGENT, viewport={"width": 1100, "height": 760}).new_page()
         page.on("request", on_request)
         page.goto("https://discord.com/login")
-        print("Fai il login nella finestra del browser (puoi usare anche il QR code dall'app).")
+        if headless:
+            print(f"Scansiona il QR in {qr_path} con l'app Discord (Impostazioni → Scansiona codice QR) e conferma.",
+                  flush=True)
+        else:
+            print("Fai il login nella finestra del browser (puoi usare anche il QR code dall'app).")
         deadline = time.time() + timeout_s
+        last_qr = b""
         while "v" not in token and time.time() < deadline:
-            page.wait_for_timeout(1000)
+            if headless:
+                qr = page.locator(QR_SELECTOR).first
+                try:
+                    if qr.is_visible():
+                        png = qr.screenshot()
+                        if png != last_qr:
+                            qr_path.write_bytes(png)
+                            last_qr = png
+                            print(f"QR aggiornato: {qr_path}", flush=True)
+                except Exception:  # il QR viene ridisegnato: riprova al giro dopo
+                    pass
+            page.wait_for_timeout(1500)
         browser.close()
+    if qr_path and qr_path.exists():
+        qr_path.unlink()
     if "v" not in token:
         raise SystemExit("Login non completato entro il tempo limite.")
     return token["v"]
 
 
-def login() -> None:
+def login(qr_path: Path | None = None) -> None:
     from .discord_fetch import DiscordClient
 
-    tok = capture_token()
+    tok = capture_token(qr_path=qr_path)
     CONFIG.user_token, CONFIG.discord_token = tok, ""
     client = DiscordClient(CONFIG)
     me = client.me()

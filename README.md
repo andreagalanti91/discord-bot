@@ -15,7 +15,19 @@ Discord ──sync/watch──▶ SQLite ──parser (+Claude per testo e grafi
                              dashboard/ (HTML statico)  ·  alert su console + webhook Discord
 ```
 
-## Avvio rapido
+## Avvio in un comando (sul tuo PC)
+
+1. Scarica il progetto: su GitHub → branch `claude/ecstatic-goodall-kdt6zo` → **Code → Download ZIP**, ed estrailo.
+2. Avvia:
+   - **Windows**: doppio clic su `start.bat`
+   - **macOS / Linux**: apri il Terminale nella cartella e lancia `./start.sh`
+
+La prima volta si apre la pagina di login di Discord: accedi come sempre. Poi lo script scarica i
+messaggi, fa l'analisi, apre la dashboard e resta in ascolto per gli alert. Serve Python 3.10+
+(python.org). Se dice che non trova messaggi di Chento, imposta `CHENTO_AUTHOR_ID` nel file `.env`
+con l'id mostrato e rilancia.
+
+## Avvio rapido (comandi singoli)
 
 ```bash
 pip install -r requirements.txt

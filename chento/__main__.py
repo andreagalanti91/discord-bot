@@ -34,8 +34,18 @@ def cmd_logout(a):
 
 def cmd_sync(a):
     from .discord_fetch import sync_history
-    n = sync_history(Store(CONFIG.db_path), CONFIG, a.limit)
+    store = Store(CONFIG.db_path)
+    n = sync_history(store, CONFIG, a.limit)
     print(f"Scaricati {n} messaggi dal canale {CONFIG.channel_id}.")
+    print_authors(store)
+
+
+def print_authors(store: Store) -> None:
+    from collections import Counter
+    c = Counter((m["author_name"], m["author_id"]) for m in store.messages())
+    print("Autori più attivi (per filtrare su uno solo: CHENTO_AUTHOR_ID=<id> nel file .env):")
+    for (name, aid), k in c.most_common(8):
+        print(f"  {k:>5}  {name}  id={aid}")
 
 
 def cmd_import(a):
@@ -51,8 +61,12 @@ def cmd_import(a):
 
 def cmd_analyze(a):
     from .market import Market
-    from .pipeline import analyze, export
+    from .pipeline import analyze, export, target_messages
     store = Store(CONFIG.db_path)
+    if not target_messages(store):
+        print(f"Nessun messaggio dell'autore '{CONFIG.author_id or CONFIG.author_name}'.")
+        print_authors(store)
+        raise SystemExit(1)
     data = analyze(store, Market(), use_ai=not a.no_ai)
     path = export(data)
     r, d = data["replica"]["stats"], data["derived"]["stats"]
